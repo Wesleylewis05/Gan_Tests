@@ -3,8 +3,8 @@ from tensorflow import keras
 from keras.models import Model, load_model, Sequential # for assembling a Neural Network model
 from keras.layers import ZeroPadding1D, Input, Dense, Embedding, Reshape, Concatenate, Flatten, Dropout, Conv1DTranspose # for adding layers
 from keras.layers import Conv2D, Conv2DTranspose, MaxPool2D, ReLU, LeakyReLU, Conv1D, Flatten, MaxPooling1D, BatchNormalization # for adding layers
-from tensorflow.keras.utils import plot_model # for plotting model diagram
-from tensorflow.keras.optimizers import Adam # for model optimization 
+from keras.utils import plot_model # for plotting model diagram
+from keras.optimizers import Adam # for model optimization 
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
@@ -40,7 +40,8 @@ class GenerateDataSet:
         # Containers to exclude - wood, stainless steel, aluminum
         self.exclude_containers = ['O','P','Q','I','K','M']
         self.exclude_contents = [15,2,0,7,10]
-        
+        self.le_contents = preprocessing.LabelEncoder()
+        self.le_containers = preprocessing.LabelEncoder()
 
     def read_data(self):
         read_files = os.listdir('data/container_content')
@@ -123,7 +124,26 @@ class GenerateDataSet:
                 # Add the index as the key value
                 data_by_contents = np.vstack((data_by_contents, useData)) if data_by_contents.size else useData
                 labels_by_contents = np.vstack((labels_by_contents, np.matlib.repmat([val,useContainer],useData.shape[0],1))) if labels_by_contents.size else np.matlib.repmat([val,useContainer],useData.shape[0],1)
+
+        # apply gradient to data
+        data_by_contents = np.hstack((data_by_contents,np.gradient(data_by_contents,axis=1)))
+
         return data_by_contents, labels_by_contents
+
+    def fit_encoding(self, l):
+        # Fit labels to model
+        # fit contents
+        self.le_contents.fit(l[:,0])
+        # fit containers
+        self.le_containers.fit(l[:,1])
+
+    def transform_encoding(self, l):
+        # Fit labels to model
+        labels_contents = self.le_contents.transform(l[:,0])
+        labels_containers = self.le_containers.transform(l[:,1])
+        encoded_labels = np.vstack((labels_containers,labels_contents)).T
+        return encoded_labels, labels_contents, labels_containers
+                
 
 # G = GenerateDataSet()
 # spectrometer_collected_data = G.read_numpy_data()
